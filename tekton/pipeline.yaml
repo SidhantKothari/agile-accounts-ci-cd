@@ -1,0 +1,45 @@
+apiVersion: tekton.dev/v1
+kind: Pipeline
+metadata:
+  name: accounts-ci-pipeline
+spec:
+  workspaces:
+    - name: shared-workspace
+  tasks:
+    - name: clone-source
+      taskRef:
+        resolver: hub
+        params:
+          - name: catalog
+            value: tekton-catalog-tasks
+          - name: type
+            value: task
+          - name: kind
+            value: task
+          - name: name
+            value: git-clone
+          - name: version
+            value: "0.9"
+      params:
+        - name: URL
+          value: https://github.com/REPLACE_WITH_YOUR_USERNAME/REPLACE_WITH_YOUR_REPOSITORY.git
+        - name: REVISION
+          value: main
+      workspaces:
+        - name: output
+          workspace: shared-workspace
+    - name: test
+      runAfter: [clone-source]
+      taskSpec:
+        workspaces:
+          - name: source
+        steps:
+          - name: test
+            image: python:3.12-slim
+            workingDir: $(workspaces.source.path)
+            script: |
+              python -m pip install --no-cache-dir -r requirements-dev.txt
+              pytest -q
+      workspaces:
+        - name: source
+          workspace: shared-workspace
